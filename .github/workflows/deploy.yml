@@ -32,9 +32,9 @@ jobs:
 
               echo "📥 [STEP 2] Clone latest code"
               git clone --depth 1 https://github.com/VitaCheck/vitacheck-ai.git
-              cd vitacheck-ai || exit 1
+              cd vitacheck-ai/fastapi-ocr || exit 1
 
-              echo "🐍 [STEP 3] Python environment setup"
+              echo "🐍 [STEP 3] Setup Python venv"
               if [ ! -d "venv_vc" ]; then
                 python3 -m venv venv_vc
               fi
@@ -51,14 +51,18 @@ jobs:
 
               echo "⚙️ [STEP 6] Setup PM2"
               if ! command -v pm2 &> /dev/null; then
+                echo "Installing PM2..."
                 sudo apt update -y > /dev/null 2>&1
                 sudo apt install -y nodejs npm > /dev/null 2>&1
                 sudo npm install -g pm2 > /dev/null 2>&1
               fi
 
-              echo "🚀 [STEP 7] Start FastAPI service"
+              echo "🚀 [STEP 7] Start FastAPI"
               pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" \
-                --name fastapi-ocr --silent || pm2 restart fastapi-ocr --silent
+                --name fastapi-ocr --cwd /home/ubuntu/vitacheck-ai/fastapi-ocr \
+                --interpreter bash --silent || \
+              pm2 restart fastapi-ocr --silent
+
               pm2 save --force > /dev/null 2>&1
 
               echo "✅ [DONE] Deployment finished successfully"
