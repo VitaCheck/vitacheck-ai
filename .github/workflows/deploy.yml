@@ -3,7 +3,7 @@ name: Deploy FastAPI to EC2
 on:
   push:
     branches:
-      - main
+      - main  
 
 jobs:
   deploy:
@@ -13,64 +13,58 @@ jobs:
       - name: ✅ Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Debug secrets (optional)
-        run: |
-          echo "EC2_HOST value is: ${{ secrets.EC2_HOST }}"
-          echo "EC2_SSH_KEY length: $(echo '${{ secrets.EC2_SSH_KEY }}' | wc -c)"
-
       - name: ⚙️ Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.EC2_HOST }}         
-          username: ${{ secrets.USERNAME }}              
-          key: ${{ secrets.EC2_SSH_KEY }}      
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "====== DEPLOY START ======"
 
-            # 1️⃣ 경로 이동 및 초기 세팅
-            cd /home/ubuntu
+            LOG_FILE="/home/ubuntu/ai-deploy.log"
+            echo "🪶 [INFO] Logging full output to $LOG_FILE"
 
-            # 2️⃣ 프로젝트 없으면 clone
-            if [ ! -d "vitacheck-ai/.git" ]; then
-              echo "Cloning repository..."
-              git clone https://github.com/VitaCheck/vitacheck-ai.git
-            fi
+            {
+              echo "📦 [STEP 1] Clean old repository"
+              cd /home/ubuntu || exit 1
+              rm -rf vitacheck-ai
 
-            cd vitacheck-ai
+              echo "📥 [STEP 2] Clone latest code"
+              git clone --depth 1 https://github.com/VitaCheck/vitacheck-ai.git
+              cd vitacheck-ai || exit 1
 
-            # 3️⃣ 최신 코드로 업데이트
-            git fetch origin main
-            git reset --hard origin/main
+              echo "🐍 [STEP 3] Python environment setup"
+              if [ ! -d "venv_vc" ]; then
+                python3 -m venv venv_vc
+              fi
+              source venv_vc/bin/activate
 
-            # 4️⃣ Python 및 venv 세팅
-            if [ ! -d "venv_vc" ]; then
-              echo "Creating virtual environment..."
-              python3 -m venv venv_vc
-            fi
-            source venv_vc/bin/activate
+              echo "📦 [STEP 4] Install dependencies"
+              pip install --upgrade pip -q
+              pip install -r requirements.txt -q
 
-            echo "Installing dependencies..."
-            pip install --upgrade pip
-            pip install -r requirements.txt
+              echo "🔑 [STEP 5] Generate .env"
+              if [ ! -f ".env" ]; then
+                echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+              fi
 
-            # 5️⃣ 환경 변수 파일 자동 설정
-            if [ ! -f ".env" ]; then
-              echo "Creating .env file..."
-              echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
-            fi
+              echo "⚙️ [STEP 6] Setup PM2"
+              if ! command -v pm2 &> /dev/null; then
+                sudo apt update -y > /dev/null 2>&1
+                sudo apt install -y nodejs npm > /dev/null 2>&1
+                sudo npm install -g pm2 > /dev/null 2>&1
+              fi
 
-            # 6️⃣ PM2 설치 확인
-            if ! command -v pm2 &> /dev/null; then
-              echo "Installing PM2..."
-              sudo apt update -y
-              sudo apt install -y nodejs npm
-              sudo npm install -g pm2
-            fi
+              echo "🚀 [STEP 7] Start FastAPI service"
+              pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" \
+                --name fastapi-ocr --silent || pm2 restart fastapi-ocr --silent
+              pm2 save --force > /dev/null 2>&1
 
-            # 7️⃣ FastAPI 서버 실행/재시작
-            echo "Starting or restarting FastAPI..."
-            pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name fastapi-ocr || pm2 restart fastapi-ocr
+              echo "✅ [DONE] Deployment finished successfully"
+            } >> $LOG_FILE 2>&1
 
-            pm2 save
-
+            echo "====== DEPLOY SUMMARY ======"
+            echo "📄 Logs saved to: $LOG_FILE"
+            tail -n 10 $LOG_FILE || echo "No log file found."
             echo "====== DEPLOY COMPLETE ======"
