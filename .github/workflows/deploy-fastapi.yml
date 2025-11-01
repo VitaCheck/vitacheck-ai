@@ -1,9 +1,9 @@
-name: Deploy FastAPI to EC2
+name: 🚀 Deploy FastAPI to EC2
 
 on:
   push:
     branches:
-      - main  
+      - main  # main 브랜치 푸시 시 자동 배포
 
 jobs:
   deploy:
@@ -20,9 +20,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 120s
+          command_timeout: 10m
           script: |
             echo "====== DEPLOY START ======"
-
+            mkdir -p /home/ubuntu
             LOG_FILE="/home/ubuntu/ai-deploy.log"
             echo "🪶 [INFO] Logging full output to $LOG_FILE"
 
@@ -67,30 +68,28 @@ jobs:
                 echo "No existing FastAPI process found."
               fi
 
-              echo "🚀 [STEP 8] Start FastAPI fresh"
-              pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" \
-                --name fastapi-ocr --cwd /home/ubuntu/vitacheck-ai/fastapi-ocr \
-                --interpreter bash --silent
+              echo "🚀 [STEP 8] Start FastAPI (via venv Python)"
+              pm2 start "venv_vc/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000" \
+                --name fastapi-ocr \
+                --cwd /home/ubuntu/vitacheck-ai/fastapi-ocr \
+                --no-autorestart --silent
 
               sleep 5
 
-              # ✅ 상태 점검
               STATUS=$(pm2 info fastapi-ocr | grep status | awk '{print $4}')
               if [ "$STATUS" != "online" ]; then
                 echo "❌ FastAPI failed to start properly (status=$STATUS)"
                 echo "📜 --- PM2 Logs ---"
-                pm2 logs fastapi-ocr --lines 20
-                echo "❌ Deployment failed. Writing error to log file."
-                pm2 logs fastapi-ocr --lines 50 >> $LOG_FILE 2>&1
+                pm2 logs fastapi-ocr --lines 20 >> $LOG_FILE 2>&1
                 exit 1
               fi
 
               pm2 save --force > /dev/null 2>&1
-
               echo "✅ [DONE] Deployment finished successfully"
             } >> $LOG_FILE 2>&1
 
             echo "====== DEPLOY SUMMARY ======"
             echo "📄 Logs saved to: $LOG_FILE"
-            tail -n 15 $LOG_FILE || echo "No log file found."
+            echo "🧾 --- Last 10 lines ---"
+            tail -n 10 $LOG_FILE || echo "No log file found."
             echo "====== DEPLOY COMPLETE ======"
