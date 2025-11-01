@@ -4,6 +4,7 @@ import pytesseract
 import os
 from google import genai
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 # ✅ 환경 변수 로드
 load_dotenv()
@@ -13,6 +14,22 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 app = FastAPI()
+
+# ✅ CORS 설정
+origins = [
+    "https://vitachecking.com",  
+    "https://vita-check.com",    
+    "http://vita-check.com",    
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,        
+    allow_credentials=True,
+    allow_methods=["*"],          # 모든 HTTP 메서드 허용 (GET, POST, PUT, DELETE 등)
+    allow_headers=["*"],          # 모든 헤더 허용
+)
+
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

@@ -1,0 +1,3 @@
+venv_vc
+fastapi-ocr/__pycache__/
+.env
