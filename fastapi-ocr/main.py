@@ -16,15 +16,17 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 app = FastAPI()
 
 # ✅ CORS 설정
-origins = [
-    "https://vitachecking.com",  
-    "https://vita-check.com",    
-    "http://vita-check.com",    
-]
+# origins = [
+#     "https://vitachecking.com",  
+#     "https://vita-check.com",    
+#     "http://vita-check.com",    
+#     ""
+# ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        
+    # allow_origins=origins, 
+    allow_origins=["*"],       
     allow_credentials=True,
     allow_methods=["*"],          # 모든 HTTP 메서드 허용 (GET, POST, PUT, DELETE 등)
     allow_headers=["*"],          # 모든 헤더 허용
