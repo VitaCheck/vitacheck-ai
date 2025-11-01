@@ -22,7 +22,7 @@ jobs:
           script: |
             echo "====== DEPLOY START ======"
 
-            LOG_FILE="/home/ubuntu/ai-deploy.log"
+            LOG_FILE="/home/ubuntu/vitacheck-ai/ai-deploy.log"
             echo "🪶 [INFO] Logging full output to $LOG_FILE"
 
             {
@@ -57,11 +57,19 @@ jobs:
                 sudo npm install -g pm2 > /dev/null 2>&1
               fi
 
-              echo "🚀 [STEP 7] Start FastAPI"
+              echo "🧹 [STEP 7] Stop existing FastAPI process (if any)"
+              if pm2 list | grep -q "fastapi-ocr"; then
+                echo "Existing process found. Stopping it..."
+                pm2 stop fastapi-ocr || true
+                pm2 delete fastapi-ocr || true
+              else
+                echo "No existing FastAPI process found."
+              fi
+
+              echo "🚀 [STEP 8] Start FastAPI fresh"
               pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" \
                 --name fastapi-ocr --cwd /home/ubuntu/vitacheck-ai/fastapi-ocr \
-                --interpreter bash --silent || \
-              pm2 restart fastapi-ocr --silent
+                --interpreter bash --silent
 
               pm2 save --force > /dev/null 2>&1
 
