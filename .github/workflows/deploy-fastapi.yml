@@ -19,10 +19,11 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 120
           script: |
             echo "====== DEPLOY START ======"
 
-            LOG_FILE="/home/ubuntu/vitacheck-ai/ai-deploy.log"
+            LOG_FILE="/home/ubuntu/ai-deploy.log"
             echo "🪶 [INFO] Logging full output to $LOG_FILE"
 
             {
