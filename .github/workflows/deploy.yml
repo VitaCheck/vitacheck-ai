@@ -3,7 +3,7 @@ name: Deploy FastAPI to EC2
 on:
   push:
     branches:
-      - main  
+      - main
 
 jobs:
   deploy:
@@ -13,10 +13,16 @@ jobs:
       - name: ✅ Checkout repository
         uses: actions/checkout@v4
 
+      - name: ⚙️ Debug secrets (optional)
+        run: |
+          echo "EC2_HOST value is: ${{ secrets.EC2_HOST }}"
+          echo "EC2_SSH_KEY length: $(echo '${{ secrets.EC2_SSH_KEY }}' | wc -c)"
+
       - name: ⚙️ Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.EC2_HOST }}       
+          host: ${{ secrets.EC2_HOST }}         
+          username: ${{ secrets.USERNAME }}              
           key: ${{ secrets.EC2_SSH_KEY }}      
           script: |
             echo "====== DEPLOY START ======"
