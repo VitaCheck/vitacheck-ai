@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 120
+          timeout: 120s
           script: |
             echo "====== DEPLOY START ======"
 
