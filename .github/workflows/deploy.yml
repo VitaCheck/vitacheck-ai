@@ -1,28 +1,70 @@
-name: Deploy VitaCheck AI to EC2
+name: Deploy FastAPI to EC2
 
 on:
   push:
     branches:
-      - main
+      - main  
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: ✅ Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Deploy to EC2 via SSH
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd /home/ubuntu/vitacheck-ai
-          git fetch origin main
-          git reset --hard origin/main
-          source venv_vc/bin/activate
-          pip install -r requirements.txt
-          pm2 restart fastapi-ocr
+      - name: ⚙️ Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}       
+          key: ${{ secrets.EC2_SSH_KEY }}      
+          script: |
+            echo "====== DEPLOY START ======"
+
+            # 1️⃣ 경로 이동 및 초기 세팅
+            cd /home/ubuntu
+
+            # 2️⃣ 프로젝트 없으면 clone
+            if [ ! -d "vitacheck-ai/.git" ]; then
+              echo "Cloning repository..."
+              git clone https://github.com/<YOUR_GITHUB_USERNAME>/vitacheck-ai.git
+            fi
+
+            cd vitacheck-ai
+
+            # 3️⃣ 최신 코드로 업데이트
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 4️⃣ Python 및 venv 세팅
+            if [ ! -d "venv_vc" ]; then
+              echo "Creating virtual environment..."
+              python3 -m venv venv_vc
+            fi
+            source venv_vc/bin/activate
+
+            echo "Installing dependencies..."
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+            # 5️⃣ 환경 변수 파일 자동 설정
+            if [ ! -f ".env" ]; then
+              echo "Creating .env file..."
+              echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
+            fi
+
+            # 6️⃣ PM2 설치 확인
+            if ! command -v pm2 &> /dev/null; then
+              echo "Installing PM2..."
+              sudo apt update -y
+              sudo apt install -y nodejs npm
+              sudo npm install -g pm2
+            fi
+
+            # 7️⃣ FastAPI 서버 실행/재시작
+            echo "Starting or restarting FastAPI..."
+            pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name fastapi-ocr || pm2 restart fastapi-ocr
+
+            pm2 save
+
+            echo "====== DEPLOY COMPLETE ======"
