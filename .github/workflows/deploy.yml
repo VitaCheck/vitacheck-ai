@@ -27,7 +27,7 @@ jobs:
             # 2️⃣ 프로젝트 없으면 clone
             if [ ! -d "vitacheck-ai/.git" ]; then
               echo "Cloning repository..."
-              git clone https://github.com/<YOUR_GITHUB_USERNAME>/vitacheck-ai.git
+              git clone https://github.com/VitaCheck/vitacheck-ai.git
             fi
 
             cd vitacheck-ai
