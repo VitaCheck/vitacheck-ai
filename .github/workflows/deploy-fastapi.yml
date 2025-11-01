@@ -71,6 +71,19 @@ jobs:
                 --name fastapi-ocr --cwd /home/ubuntu/vitacheck-ai/fastapi-ocr \
                 --interpreter bash --silent
 
+              sleep 5
+
+              # ✅ 상태 점검
+              STATUS=$(pm2 info fastapi-ocr | grep status | awk '{print $4}')
+              if [ "$STATUS" != "online" ]; then
+                echo "❌ FastAPI failed to start properly (status=$STATUS)"
+                echo "📜 --- PM2 Logs ---"
+                pm2 logs fastapi-ocr --lines 20
+                echo "❌ Deployment failed. Writing error to log file."
+                pm2 logs fastapi-ocr --lines 50 >> $LOG_FILE 2>&1
+                exit 1
+              fi
+
               pm2 save --force > /dev/null 2>&1
 
               echo "✅ [DONE] Deployment finished successfully"
@@ -78,5 +91,5 @@ jobs:
 
             echo "====== DEPLOY SUMMARY ======"
             echo "📄 Logs saved to: $LOG_FILE"
-            tail -n 10 $LOG_FILE || echo "No log file found."
+            tail -n 15 $LOG_FILE || echo "No log file found."
             echo "====== DEPLOY COMPLETE ======"
